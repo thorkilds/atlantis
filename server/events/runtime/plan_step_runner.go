@@ -2,6 +2,8 @@ package runtime
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,7 +13,12 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-const defaultWorkspace = "default"
+const (
+	defaultWorkspace = "default"
+	// refreshSeparator is what separates the refresh stage from the calculated
+	// plan during a terraform plan.
+	refreshSeparator = "------------------------------------------------------------------------\n"
+)
 
 var (
 	plusDiffRegex  = regexp.MustCompile(`(?m)^ {2}\+`)
@@ -22,6 +29,7 @@ var (
 type PlanStepRunner struct {
 	TerraformExecutor TerraformExec
 	DefaultTFVersion  *version.Version
+	RemoteOpsChecker  RemoteOpsChecker
 }
 
 func (p *PlanStepRunner) Run(ctx models.ProjectCommandContext, extraArgs []string, path string) (string, error) {
@@ -36,10 +44,37 @@ func (p *PlanStepRunner) Run(ctx models.ProjectCommandContext, extraArgs []strin
 		return "", err
 	}
 
-	planCmd := p.buildPlanCmd(ctx, extraArgs, path, tfVersion)
+	// Detect if we're using the remote backend.
+	isRemote, err := p.RemoteOpsChecker.UsingRemoteOps(ctx.Log, ctx.Workspace, path)
+	if err != nil {
+		ctx.Log.Err("checking if using remote backend: %s", err)
+		return "", err
+	}
+
+	planFile := filepath.Join(path, GetPlanFilename(ctx.Workspace, ctx.ProjectConfig))
+	planCmd := p.buildPlanCmd(ctx, extraArgs, path, tfVersion, planFile, isRemote)
 	output, err := p.TerraformExecutor.RunCommandWithVersion(ctx.Log, filepath.Clean(path), planCmd, tfVersion, ctx.Workspace)
 	if err != nil {
 		return output, err
+	}
+	if isRemote {
+		// If using remote ops, we create our own "fake" planfile with the
+		// text output of the plan. We do this for two reasons:
+		// 1) Atlantis relies on there being a planfile on disk to detect which
+		// projects have outstanding plans.
+		// 2) Remote ops don't support the -out parameter so we can't save the
+		// plan. To ensure that what gets applied is the plan we printed to the PR,
+		// during the apply phase, we diff the output we stored in the fake
+		// planfile with the pending apply output.
+		planOutput := output
+		sepIdx := strings.Index(planOutput, refreshSeparator)
+		if sepIdx > -1 {
+			planOutput = planOutput[sepIdx+len(refreshSeparator):]
+		}
+		err := ioutil.WriteFile(planFile, []byte(planOutput), 0644)
+		if err != nil {
+			return output, errors.Wrap(err, "unable to create planfile for remote ops")
+		}
 	}
 	return p.fmtPlanOutput(output), nil
 }
@@ -94,9 +129,8 @@ func (p *PlanStepRunner) switchWorkspace(ctx models.ProjectCommandContext, path 
 	return nil
 }
 
-func (p *PlanStepRunner) buildPlanCmd(ctx models.ProjectCommandContext, extraArgs []string, path string, tfVersion *version.Version) []string {
+func (p *PlanStepRunner) buildPlanCmd(ctx models.ProjectCommandContext, extraArgs []string, path string, tfVersion *version.Version, planFile string, isRemote bool) []string {
 	tfVars := p.tfVars(ctx, tfVersion)
-	planFile := filepath.Join(path, GetPlanFilename(ctx.Workspace, ctx.ProjectConfig))
 
 	// Check if env/{workspace}.tfvars exist and include it. This is a use-case
 	// from Hootsuite where Atlantis was first created so we're keeping this as
@@ -108,14 +142,25 @@ func (p *PlanStepRunner) buildPlanCmd(ctx models.ProjectCommandContext, extraArg
 		envFileArgs = []string{"-var-file", envFile}
 	}
 
-	argList := [][]string{
-		// NOTE: we need to quote the plan filename because Bitbucket Server can
-		// have spaces in its repo owner names.
-		{"plan", "-input=false", "-refresh", "-no-color", "-out", fmt.Sprintf("%q", planFile)},
-		tfVars,
-		extraArgs,
-		ctx.CommentArgs,
-		envFileArgs,
+	var argList [][]string
+	if isRemote {
+		// If we're using the remote backend, we don't use -out or any -var*
+		// flags.
+		argList = [][]string{
+			{"plan", "-input=false", "-refresh", "-no-color"},
+			extraArgs,
+			ctx.CommentArgs,
+		}
+	} else {
+		argList = [][]string{
+			// NOTE: we need to quote the plan filename because Bitbucket Server can
+			// have spaces in its repo owner names.
+			{"plan", "-input=false", "-refresh", "-no-color", "-out", fmt.Sprintf("%q", planFile)},
+			tfVars,
+			extraArgs,
+			ctx.CommentArgs,
+			envFileArgs,
+		}
 	}
 
 	return p.flatten(argList)
@@ -169,7 +214,6 @@ func (p *PlanStepRunner) flatten(slices [][]string) []string {
 func (p *PlanStepRunner) fmtPlanOutput(output string) string {
 	// Plan output contains a lot of "Refreshing..." lines followed by a
 	// separator. We want to remove everything before that separator.
-	refreshSeparator := "------------------------------------------------------------------------\n"
 	sepIdx := strings.Index(output, refreshSeparator)
 	if sepIdx > -1 {
 		output = output[sepIdx+len(refreshSeparator):]

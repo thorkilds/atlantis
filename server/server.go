@@ -224,6 +224,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 	defaultTfVersion := terraformClient.Version()
 	pendingPlanFinder := &events.DefaultPendingPlanFinder{}
+	remoteOpsChecker := &runtime.DefaultRemoteOpsChecker{}
 	commandRunner := &events.DefaultCommandRunner{
 		VCSClient:                vcsClient,
 		GithubPullGetter:         githubClient,
@@ -255,9 +256,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			PlanStepRunner: &runtime.PlanStepRunner{
 				TerraformExecutor: terraformClient,
 				DefaultTFVersion:  defaultTfVersion,
+				RemoteOpsChecker:  remoteOpsChecker,
 			},
 			ApplyStepRunner: &runtime.ApplyStepRunner{
 				TerraformExecutor: terraformClient,
+				RemoteOpsChecker:  remoteOpsChecker,
 			},
 			RunStepRunner: &runtime.RunStepRunner{
 				DefaultTFVersion: defaultTfVersion,

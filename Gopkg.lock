@@ -181,12 +181,44 @@
   revision = "7554cd9344cec97297fa6649b055a8c98c2a1e55"
 
 [[projects]]
+  digest = "1:f47d6109c2034cb16bd62b220e18afd5aa9d5a1630fe5d937ad96a4fb7cbb277"
+  name = "github.com/hashicorp/go-cleanhttp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e8ab9daed8d1ddd2d3c4efba338fe2eeae2e4f18"
+  version = "v0.5.0"
+
+[[projects]]
   branch = "master"
   digest = "1:06b0de714eda10ccb203ef43155059c734f8d9377421954ae14cbf6af1fcf0b1"
   name = "github.com/hashicorp/go-multierror"
   packages = ["."]
   pruneopts = "UT"
   revision = "83588e72410abfbe4df460eeb6f30841ae47d4c4"
+
+[[projects]]
+  digest = "1:d260503602063d71718eb21f85c02133ad5eac894c2a6f0e0546b7dc017dc97e"
+  name = "github.com/hashicorp/go-retryablehttp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "73489d0a1476f0c9e6fb03f9c39241523a496dfd"
+  version = "v0.5.2"
+
+[[projects]]
+  digest = "1:19955d4787017d7737e7ccceff14fe9b4df4a2b2784188725504f049e6a489a0"
+  name = "github.com/hashicorp/go-slug"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "98c6f0ec89d1cf8f4e487810d666ce3c0b6d4b44"
+  version = "v0.2.0"
+
+[[projects]]
+  digest = "1:a8bcbb5488de97d8b747fb2953cb780b5becabbe11fe6f789536b6a36e948a91"
+  name = "github.com/hashicorp/go-tfe"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "acdc276853ce0008c4586adacc7ba68087d29237"
+  version = "v0.3.8"
 
 [[projects]]
   branch = "master"
@@ -413,6 +445,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:6ac3397664e2da16faa53c940396d8c258cd5e3ccb4ddbb18bee8ace2b203bbd"
+  name = "github.com/svanharmelen/jsonapi"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0c0828c3f16d3732cc7edecf49934d95550894e7"
+
+[[projects]]
   digest = "1:b24d38b282bacf9791408a080f606370efa3d364e4b5fd9ba0f7b87786d3b679"
   name = "github.com/urfave/cli"
   packages = ["."]
@@ -490,6 +530,14 @@
   revision = "1cbadb444a806fd9430d14ad08967ed91da4fa0a"
 
 [[projects]]
+  branch = "master"
+  digest = "1:9fdc2b55e8e0fafe4b41884091e51e77344f7dc511c5acedcfd98200003bff90"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  pruneopts = "UT"
+  revision = "85acf8d2951cb2a3bde7632f9ff273ef0379bcbd"
+
+[[projects]]
   digest = "1:08206298775e5b462e6c0333f4471b44e63f1a70e42952b6ede4ecc9572281eb"
   name = "google.golang.org/appengine"
   packages = [
@@ -537,7 +585,9 @@
     "github.com/google/go-github/github",
     "github.com/gorilla/mux",
     "github.com/hashicorp/go-multierror",
+    "github.com/hashicorp/go-tfe",
     "github.com/hashicorp/go-version",
+    "github.com/hashicorp/hcl",
     "github.com/lkysow/go-gitlab",
     "github.com/mitchellh/colorstring",
     "github.com/mitchellh/go-homedir",
